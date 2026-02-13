@@ -415,21 +415,87 @@ let liked=JSON.parse(localStorage.getItem('sorell_liked')||'[]');
 let likedIds=new Set(liked.map(t=>t.id));
 let pls=JSON.parse(localStorage.getItem('sorell_pls')||'[]');
 
-async function sc(ep,p={}){
-  const u=new URL('https://api.soundcloud.com'+ep);
-  u.searchParams.set('client_id',SC);
-  Object.entries(p).forEach(([k,v])=>u.searchParams.set(k,v));
-  try{const r=await fetch(u);if(!r.ok)return null;return r.json();}catch{return null;}
+// ── SoundCloud API v2 with CORS proxy fallback ───────────────
+// api-v2.soundcloud.com works directly from most browsers.
+// If CORS blocks it, we fall back to allorigins.win proxy.
+async function scV2(ep, p={}) {
+  const u = new URL('https://api-v2.soundcloud.com' + ep);
+  u.searchParams.set('client_id', SC);
+  u.searchParams.set('app_version', '1731589474');
+  u.searchParams.set('app_locale', 'en');
+  Object.entries(p).forEach(([k,v]) => u.searchParams.set(k, v));
+  const directUrl = u.toString();
+
+  // Try direct first (works in most browsers)
+  try {
+    const r = await fetch(directUrl, {
+      headers: { 'Accept': 'application/json, text/javascript, */*; q=0.01' }
+    });
+    if (r.ok) return r.json();
+  } catch {}
+
+  // CORS proxy fallback
+  try {
+    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(directUrl);
+    const r2 = await fetch(proxyUrl);
+    if (r2.ok) return r2.json();
+  } catch {}
+
+  return null;
 }
 
-function toT(t){if(!t)return null;return{id:t.id,name:t.title||'Unknown',artist:t.user?.username||'Unknown Artist',artistId:t.user?.id,art:(t.artwork_url||t.user?.avatar_url||'').replace('-large','-t300x300'),artBig:(t.artwork_url||t.user?.avatar_url||'').replace('-large','-t500x500'),duration:t.duration||0,scUrl:t.permalink_url,streamable:t.streamable!==false,raw:t};}
+// v2 search returns { collection: [...] }
+// v2 track shape: title, user.username, artwork_url, duration, permalink_url, streamable
+function toT(t) {
+  if (!t) return null;
+  const art = (t.artwork_url || t.user?.avatar_url || '').replace('-large', '-t300x300');
+  return {
+    id: t.id,
+    name: t.title || 'Unknown',
+    artist: t.user?.username || t.publisher_metadata?.artist || 'Unknown Artist',
+    artistId: t.user?.id,
+    art: art,
+    artBig: art.replace('-t300x300', '-t500x500'),
+    duration: t.duration || t.full_duration || 0,
+    scUrl: t.permalink_url,
+    streamable: t.streamable !== false,
+    raw: t
+  };
+}
 
-async function loadHome(){
-  const[tr,nr]=await Promise.all([sc('/tracks',{q:'trending popular',limit:15}),sc('/tracks',{q:'new release 2024',limit:12})]);
-  if(tr){const ts=tr.map(toT).filter(Boolean);document.getElementById('homeTrending').innerHTML=renderTL(ts,ts);}
-  else document.getElementById('homeTrending').innerHTML='<div class="empty"><p>Could not load. Check connection.</p></div>';
-  if(nr){const ts=nr.map(toT).filter(Boolean);document.getElementById('homeNew').innerHTML=ts.map(t=>card(t,ts)).join('');}
-  else document.getElementById('homeNew').innerHTML='';
+async function loadHome() {
+  // Use v2 charts endpoint for real trending data
+  const [charts, fresh] = await Promise.all([
+    scV2('/charts', { kind: 'top', genre: 'soundcloud:genres:all-music', limit: 15 }),
+    scV2('/charts', { kind: 'trending', genre: 'soundcloud:genres:all-music', limit: 12 })
+  ]);
+
+  if (charts?.collection?.length) {
+    const ts = charts.collection.map(item => toT(item.track || item)).filter(Boolean);
+    document.getElementById('homeTrending').innerHTML = renderTL(ts, ts);
+  } else {
+    // fallback: search for popular tracks
+    const fallback = await scV2('/search/tracks', { q: 'popular', limit: 15 });
+    if (fallback?.collection?.length) {
+      const ts = fallback.collection.map(toT).filter(Boolean);
+      document.getElementById('homeTrending').innerHTML = renderTL(ts, ts);
+    } else {
+      document.getElementById('homeTrending').innerHTML = '<div class="empty"><p>Could not load. Check connection.</p></div>';
+    }
+  }
+
+  if (fresh?.collection?.length) {
+    const ts = fresh.collection.map(item => toT(item.track || item)).filter(Boolean);
+    document.getElementById('homeNew').innerHTML = ts.map(t => card(t, ts)).join('');
+  } else {
+    const fallback2 = await scV2('/search/tracks', { q: 'new music 2024', limit: 12 });
+    if (fallback2?.collection?.length) {
+      const ts = fallback2.collection.map(toT).filter(Boolean);
+      document.getElementById('homeNew').innerHTML = ts.map(t => card(t, ts)).join('');
+    } else {
+      document.getElementById('homeNew').innerHTML = '';
+    }
+  }
 }
 
 function card(t,all){return`<div class="card" onclick="playTrack(${ja(t)},${ja(all)})"><div class="card-art">${t.art?`<img src="${t.art}" loading="lazy" alt="">`:`<div class="art-ph"><svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div>`}<div class="card-play-ov"><div class="card-play-btn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div></div></div><div class="card-info"><div class="card-name">${esc(t.name)}</div><div class="card-sub">${esc(t.artist)}</div></div></div>`;}
@@ -450,9 +516,17 @@ document.getElementById('searchInput').addEventListener('input',function(){
 async function doSearch(q){
   const g=document.getElementById('genreSel').value,k=q+'|'+g;
   if(!cache[k]){
-    const gp=g?{genres:g}:{};
-    const[tr,us,pl]=await Promise.all([sc('/tracks',{q,limit:30,...gp}),sc('/users',{q,limit:20}),sc('/playlists',{q,limit:20})]);
-    cache[k]={tracks:(tr||[]).map(toT).filter(Boolean),users:us||[],playlists:pl||[]};
+    const gp=g?{genre:'soundcloud:genres:'+g}:{};
+    const[tr,us,pl]=await Promise.all([
+      scV2('/search/tracks',{q,limit:30,...gp}),
+      scV2('/search/users',{q,limit:20}),
+      scV2('/search/playlists',{q,limit:20})
+    ]);
+    cache[k]={
+      tracks:(tr?.collection||[]).map(toT).filter(Boolean),
+      users:(us?.collection||[]),
+      playlists:(pl?.collection||[])
+    };
   }
   document.getElementById('searchResults').style.display='block';
   document.getElementById('searchEmpty').style.display='none';
@@ -535,17 +609,20 @@ function toggleMute(){isMuted=!isMuted;_setWidgetVolume(isMuted?0:vol);document.
 async function loadArtist(userId,name){
   showView('artist');
   document.getElementById('artistHd').innerHTML='<div class="loading"><div class="spin"></div></div>';
-  const[user,tracks]=await Promise.all([sc(`/users/${userId}`),sc(`/users/${userId}/tracks`,{limit:30})]);
+  const[user,tracks]=await Promise.all([
+    scV2(`/users/${userId}`),
+    scV2(`/users/${userId}/tracks`,{limit:30})
+  ]);
   const img=(user?.avatar_url||'').replace('-large','-t500x500');
   document.getElementById('artistHd').innerHTML=`<div class="coll-art">${img?`<img src="${img}" alt="">`:'🎵'}</div><div><div class="coll-type">Artist on SoundCloud</div><div class="coll-name">${esc(user?.username||name)}</div><div class="coll-meta">${(user?.followers_count||0).toLocaleString()} followers · ${user?.track_count||0} tracks</div><div class="coll-acts"><button class="btn-pr" onclick="searchPlay('${esc(user?.username||name)}')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>Play</button></div></div>`;
-  const ts=(tracks||[]).map(toT).filter(Boolean);
+  const ts=((tracks?.collection||tracks)||[]).map(toT).filter(Boolean);
   document.getElementById('artistTracks').innerHTML=ts.length?renderTL(ts,ts):'<div class="empty"><p>No tracks</p></div>';
 }
 
 async function openSCPl(id,name){
   showView('playlist');
   document.getElementById('plViewHd').innerHTML='<div class="loading"><div class="spin"></div></div>';
-  const pl=await sc(`/playlists/${id}`);
+  const pl=await scV2(`/playlists/${id}`);
   if(!pl){document.getElementById('plViewHd').innerHTML='<p>Could not load.</p>';return;}
   const img=(pl.artwork_url||pl.tracks?.[0]?.artwork_url||'').replace('-large','-t500x500');
   document.getElementById('plViewHd').innerHTML=`<div class="coll-art">${img?`<img src="${img}" alt="">`:'🎵'}</div><div><div class="coll-type">Playlist · ${pl.track_count||0} tracks</div><div class="coll-name">${esc(pl.title)}</div><div class="coll-meta">${esc(pl.user?.username||'')} · ${pl.genre||''}</div><div class="coll-acts"><button class="btn-pr" onclick="playFirst('plViewTracks')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>Play All</button></div></div>`;
@@ -554,7 +631,7 @@ async function openSCPl(id,name){
 }
 
 function playFirst(id){const r=document.querySelector(`#${id} .tl-row`);if(r)r.click();}
-async function searchPlay(q){const d=await sc('/tracks',{q,limit:20});if(d?.length){const ts=d.map(toT).filter(Boolean);playTrack(ts[0],ts);}}
+async function searchPlay(q){const d=await scV2('/search/tracks',{q,limit:20});const ts=(d?.collection||[]).map(toT).filter(Boolean);if(ts.length)playTrack(ts[0],ts);}
 
 function toggleLike(t){
   if(likedIds.has(t.id)){liked=liked.filter(x=>x.id!==t.id);likedIds.delete(t.id);toast('Removed from Liked Songs');}
