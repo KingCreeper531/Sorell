@@ -364,13 +364,14 @@ let widget = null, wReady = false, pendingUrl = null;
 
 function initWidget() {
   const iframe = document.createElement('iframe');
-  iframe.allow = 'autoplay';
+  // allow="autoplay" removed — causes Firefox CSP warnings
   iframe.style.cssText = 'position:fixed;width:1px;height:1px;bottom:-200px;left:-200px;border:0;opacity:0;pointer-events:none';
-  iframe.src = 'https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/soundcloud-blog&auto_play=false&hide_related=true&show_comments=false&show_user=false&visual=false';
+  iframe.src = 'https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/293&auto_play=false&hide_related=true&show_comments=false&show_user=false&visual=false&show_artwork=false';
   document.body.appendChild(iframe);
 
   const s = document.createElement('script');
   s.src = 'https://w.soundcloud.com/player/api.js';
+  s.crossOrigin = 'anonymous';
   s.onload = () => {
     widget = SC_Widget(iframe);
     widget.bind(SC_Widget.Events.READY, () => {
