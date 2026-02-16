@@ -29,7 +29,7 @@ img{display:block;object-fit:cover}
 .logo-txt{font-family:'Syne',sans-serif;font-weight:800;font-size:16px;letter-spacing:.12em}
 .sb-sec{padding:14px 10px 6px}
 .sb-lbl{font-size:9px;letter-spacing:.18em;color:var(--txt3);text-transform:uppercase;padding:0 8px;margin-bottom:5px}
-.nav{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:9px;cursor:pointer;color:var(--txt2);font-size:12px;transition:all .12s}
+.nav{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:9px;cursor:pointer;color:var(--txt2);font-size:12px;transition:all .12s;white-space:nowrap;overflow:hidden}
 .nav:hover{background:var(--sur);color:var(--txt)}.nav.on{background:var(--sur);color:var(--acc)}
 .nav svg{width:15px;height:15px;fill:currentColor;flex-shrink:0;opacity:.7}.nav.on svg{opacity:1}
 .pl-wrap{flex:1;overflow-y:auto;padding:0 10px 12px}
@@ -91,13 +91,13 @@ img{display:block;object-fit:cover}
 .eq span:nth-child(1){height:5px}.eq span:nth-child(2){height:11px;animation-delay:.15s}
 .eq span:nth-child(3){height:7px;animation-delay:.3s}.eq span:nth-child(4){height:9px;animation-delay:.1s}
 @keyframes eq{from{transform:scaleY(.35)}to{transform:scaleY(1)}}
-.tlm{display:flex;align-items:center;gap:10px;min-width:0;padding-left:8px}
+.tlm{display:flex;align-items:center;gap:10px;min-width:0;padding-left:8px;overflow:hidden}
 .tlth{width:34px;height:34px;border-radius:5px;overflow:hidden;flex-shrink:0;background:var(--sur)}
 .tlth img{width:100%;height:100%}
-.tltw{min-width:0}
+.tltw{min-width:0;overflow:hidden}
 .tlt{font-size:11px;font-family:'Syne',sans-serif;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
 .tla{font-size:10px;color:var(--txt3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}.tla:hover{color:var(--acc)}
-.tlc{font-size:10px;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:6px}
+.tlc{font-size:10px;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:6px;min-width:0}
 .tld{font-size:10px;color:var(--txt3);text-align:right;padding-right:8px;font-variant-numeric:tabular-nums}
 .tlk{display:flex;align-items:center;justify-content:flex-end}
 .lbtn{width:22px;height:22px;display:grid;place-items:center;border-radius:50%;color:var(--txt3);opacity:0;transition:all .12s}
@@ -114,7 +114,7 @@ img{display:block;object-fit:cover}
 .coll-art img{width:100%;height:100%}
 .heart-art{background:linear-gradient(135deg,#0a1520,#003344)}.heart-art svg{width:55px;height:55px;fill:var(--acc)}
 .coll-type{font-size:9px;letter-spacing:.14em;color:var(--txt3);text-transform:uppercase;margin-bottom:5px}
-.coll-nm{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;letter-spacing:-.02em;margin-bottom:8px}
+.coll-nm{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;letter-spacing:-.02em;margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .coll-meta{font-size:11px;color:var(--txt2);margin-bottom:18px}
 .coll-acts{display:flex;gap:9px}
 .btn-play{padding:9px 20px;border-radius:50px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;transition:all .12s;border:none;display:flex;align-items:center;gap:6px;background:var(--acc);color:var(--bg);font-weight:600}
@@ -127,7 +127,7 @@ img{display:block;object-fit:cover}
 .yt-wrap.on{display:flex}
 .yt-box{background:var(--bg2);border:1px solid var(--bdr);border-radius:16px;overflow:hidden;width:min(860px,95vw)}
 .yt-top{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--bdr)}
-.yt-info{min-width:0}.yt-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.yt-info{min-width:0}.yt-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100% - 10px)}
 .yt-artist{font-size:11px;color:var(--txt2);margin-top:2px}
 .yt-close{width:32px;height:32px;display:grid;place-items:center;border-radius:50%;transition:background .12s;flex-shrink:0}
 .yt-close:hover{background:var(--sur)}.yt-close svg{width:18px;height:18px;fill:var(--txt2)}
@@ -143,7 +143,7 @@ img{display:block;object-fit:cover}
 .np-art img{width:100%;height:100%}
 .np-ph{width:100%;height:100%;display:grid;place-items:center}.np-ph svg{width:18px;height:18px;fill:var(--txt3)}
 .np-info{min-width:0;flex:1}
-.np-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+.np-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;max-width:160px}
 .np-artist{font-size:10px;color:var(--txt3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .np-like{width:26px;height:26px;flex-shrink:0;cursor:pointer;display:grid;place-items:center;transition:transform .12s}
 .np-like:hover{transform:scale(1.2)}.np-like svg{width:15px;height:15px;stroke:var(--txt3);fill:none}
@@ -479,36 +479,61 @@ function updateProgress() {
 
 // Search YouTube for a track and return the video ID
 const ytCache = {};
+
+// Multiple Piped instances (community-run YouTube frontends, no API key needed)
+const PIPED_INSTANCES = [
+  'https://pipedapi.kavin.rocks',
+  'https://pipedapi.adminforge.de',
+  'https://pipedapi.moomoo.me',
+  'https://pipedapi.drgns.space',
+];
+
 async function findYTId(track, artist) {
   const key = `${track}|${artist}`;
   if (ytCache[key]) return ytCache[key];
-  const q = encodeURIComponent(`${track} ${artist} official audio`);
-  // Use YouTube's oEmbed + noembed to avoid API key requirement
-  // Instead, build the search URL and use the no-embed approach
-  try {
-    const r = await fetch(`https://www.youtube.com/results?search_query=${q}`, { mode: 'no-cors' });
-  } catch {}
-  // Since we can't scrape YouTube directly (CORS), use the ytSearch approach via a public proxy
-  try {
-    const r = await fetch(`https://yt.lemnoslife.com/noKey/search?part=id&type=video&q=${q}&maxResults=1`);
-    if (r.ok) {
-      const d = await r.json();
-      const id = d?.items?.[0]?.id?.videoId;
-      if (id) { ytCache[key] = id; return id; }
+
+  const queries = [
+    `${track} ${artist} official audio`,
+    `${track} ${artist}`,
+    `${track} ${artist} lyrics`,
+  ];
+
+  for (const q of queries) {
+    const encoded = encodeURIComponent(q);
+    for (const base of PIPED_INSTANCES) {
+      try {
+        const r = await fetch(`${base}/search?q=${encoded}&filter=music_songs`, {
+          signal: AbortSignal.timeout(4000)
+        });
+        if (r.ok) {
+          const d = await r.json();
+          const item = d?.items?.find(i => i.type === 'stream' || i.url?.startsWith('/watch'));
+          if (item?.url) {
+            const id = item.url.replace('/watch?v=', '').split('&')[0];
+            if (id && id.length === 11) { ytCache[key] = id; return id; }
+          }
+        }
+      } catch {}
     }
-  } catch {}
-  // Fallback: use Piped API (YouTube frontend)
-  try {
-    const r = await fetch(`https://pipedapi.kavin.rocks/search?q=${q}&filter=music_songs`);
-    if (r.ok) {
-      const d = await r.json();
-      const item = d?.items?.[0];
-      if (item?.url) {
-        const id = item.url.replace('/watch?v=', '');
-        ytCache[key] = id; return id;
-      }
+
+    // Also try Invidious instances
+    const invidiousInstances = [
+      'https://invidious.nerdvpn.de',
+      'https://invidious.privacydev.net',
+    ];
+    for (const base of invidiousInstances) {
+      try {
+        const r = await fetch(`${base}/api/v1/search?q=${encoded}&type=video&fields=videoId`, {
+          signal: AbortSignal.timeout(4000)
+        });
+        if (r.ok) {
+          const d = await r.json();
+          const id = d?.[0]?.videoId;
+          if (id && id.length === 11) { ytCache[key] = id; return id; }
+        }
+      } catch {}
     }
-  } catch {}
+  }
   return null;
 }
 
@@ -668,9 +693,16 @@ async function playTrack(t, nq = null) {
   document.title = `${t.name} — ${t.artist} · Sorell`;
 
   // Find YouTube video ID
-  toast(`Finding "${t.name}"...`);
+  toast(`Loading "${t.name}"...`);
   const ytId = await findYTId(t.name, t.artist);
-  if (!ytId) { toast('Could not find on YouTube — skipping'); setTimeout(skipNext, 1000); return; }
+  if (!ytId) {
+    // Last resort: open YouTube search in the embed directly
+    const searchQuery = encodeURIComponent(`${t.name} ${t.artist}`);
+    toast(`Opening YouTube search for "${t.name}"...`);
+    document.getElementById('ytWrap').classList.add('on');
+    document.getElementById('ytFrame').src = `https://www.youtube.com/embed?listType=search&list=${searchQuery}&autoplay=1`;
+    return;
+  }
   cur.ytId = ytId;
 
   // Open YouTube player and play
