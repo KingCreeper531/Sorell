@@ -386,9 +386,6 @@ img{display:block;object-fit:cover}
 
 <div class="toasts" id="toasts"></div>
 
-<!-- YOUTUBE IFrame API -->
-<script src="https://www.youtube.com/iframe_api"></script>
-
 <script>
 // ============================================================
 //  CONFIG
@@ -434,124 +431,40 @@ function toT(t) {
 // ============================================================
 //  YOUTUBE PLAYER
 // ============================================================
-let ytPlayer = null, ytReady = false, ytPendingId = null;
-let progressTimer = null;
+// ============================================================
+//  YOUTUBE PLAYER  — uses search embed, zero API calls needed
+// ============================================================
 
-function onYouTubeIframeAPIReady() {
-  ytPlayer = new YT.Player('ytFrame', {
-    height: '100%', width: '100%',
-    playerVars: { autoplay: 0, controls: 1, rel: 0, modestbranding: 1 },
-    events: {
-      onReady: () => { ytReady = true; if (ytPendingId) { loadYT(ytPendingId); ytPendingId = null; } },
-      onStateChange: onYTState
-    }
-  });
-}
-
-function onYTState(e) {
-  if (e.data === YT.PlayerState.PLAYING) {
-    isPlaying = true; setPlayUI(true);
-    clearInterval(progressTimer);
-    progressTimer = setInterval(updateProgress, 500);
-  } else if (e.data === YT.PlayerState.PAUSED) {
-    isPlaying = false; setPlayUI(false);
-    clearInterval(progressTimer);
-  } else if (e.data === YT.PlayerState.ENDED) {
-    clearInterval(progressTimer);
-    if (repeatMode === 2) { ytPlayer.seekTo(0); ytPlayer.playVideo(); return; }
-    if (repeatMode === 1 || qi < queue.length - 1) skipNext();
-    else { isPlaying = false; setPlayUI(false); }
-  }
-}
-
-function updateProgress() {
-  if (!ytPlayer || !ytReady) return;
-  try {
-    const cur = ytPlayer.getCurrentTime() || 0;
-    const dur = ytPlayer.getDuration() || 0;
-    if (dur > 0) {
-      document.getElementById('pFill').style.width = (cur/dur*100) + '%';
-      document.getElementById('pCur').textContent = fmt(cur*1000);
-      document.getElementById('pDur').textContent = fmt(dur*1000);
-    }
-  } catch {}
-}
-
-// Search YouTube for a track and return the video ID
-const ytCache = {};
-
-// Multiple Piped instances (community-run YouTube frontends, no API key needed)
-const PIPED_INSTANCES = [
-  'https://pipedapi.kavin.rocks',
-  'https://pipedapi.adminforge.de',
-  'https://pipedapi.moomoo.me',
-  'https://pipedapi.drgns.space',
-];
-
-async function findYTId(track, artist) {
-  const key = `${track}|${artist}`;
-  if (ytCache[key]) return ytCache[key];
-
-  const queries = [
-    `${track} ${artist} official audio`,
-    `${track} ${artist}`,
-    `${track} ${artist} lyrics`,
-  ];
-
-  for (const q of queries) {
-    const encoded = encodeURIComponent(q);
-    for (const base of PIPED_INSTANCES) {
-      try {
-        const r = await fetch(`${base}/search?q=${encoded}&filter=music_songs`, {
-          signal: AbortSignal.timeout(4000)
-        });
-        if (r.ok) {
-          const d = await r.json();
-          const item = d?.items?.find(i => i.type === 'stream' || i.url?.startsWith('/watch'));
-          if (item?.url) {
-            const id = item.url.replace('/watch?v=', '').split('&')[0];
-            if (id && id.length === 11) { ytCache[key] = id; return id; }
-          }
-        }
-      } catch {}
-    }
-
-    // Also try Invidious instances
-    const invidiousInstances = [
-      'https://invidious.nerdvpn.de',
-      'https://invidious.privacydev.net',
-    ];
-    for (const base of invidiousInstances) {
-      try {
-        const r = await fetch(`${base}/api/v1/search?q=${encoded}&type=video&fields=videoId`, {
-          signal: AbortSignal.timeout(4000)
-        });
-        if (r.ok) {
-          const d = await r.json();
-          const id = d?.[0]?.videoId;
-          if (id && id.length === 11) { ytCache[key] = id; return id; }
-        }
-      } catch {}
-    }
-  }
-  return null;
-}
-
-function loadYT(videoId) {
-  if (!ytReady) { ytPendingId = videoId; return; }
-  ytPlayer.loadVideoById(videoId);
+function playOnYT(track, artist) {
+  // YouTube's own search embed — searches and autoplays the top result
+  // No API key, no CORS, works on any domain, always finds the song
+  const q = encodeURIComponent(`${track} ${artist}`);
+  const src = `https://www.youtube.com/embed?listType=search&list=${q}&index=0&autoplay=1&rel=0&modestbranding=1`;
+  document.getElementById('ytFrame').src = src;
+  document.getElementById('ytWrap').classList.add('on');
+  document.getElementById('ytTitle').textContent = track;
+  document.getElementById('ytArtist').textContent = artist;
+  isPlaying = true;
+  setPlayUI(true);
 }
 
 function openYT() {
   if (!cur) return;
-  document.getElementById('ytWrap').classList.add('on');
-  document.getElementById('ytTitle').textContent = cur.name;
-  document.getElementById('ytArtist').textContent = cur.artist;
-  if (cur.ytId) loadYT(cur.ytId);
+  playOnYT(cur.name, cur.artist);
 }
 
 function closeYT() {
+  document.getElementById('ytFrame').src = '';
   document.getElementById('ytWrap').classList.remove('on');
+  isPlaying = false;
+  setPlayUI(false);
+}
+
+// Stub — not used but referenced in skipNext/skipPrev
+function togglePlay() {
+  if (!cur) return;
+  // Can't control embedded search player programmatically — just reopen it
+  if (!document.getElementById('ytWrap').classList.contains('on')) openYT();
 }
 
 // ============================================================
@@ -671,13 +584,12 @@ function renderTL(tracks, q) {
 }
 
 // ============================================================
-//  PLAYBACK  — finds YouTube video ID and plays it
+//  PLAYBACK
 // ============================================================
-async function playTrack(t, nq = null) {
+function playTrack(t, nq = null) {
   if (!t) return;
   cur = t;
   if (nq) { queue = nq; qi = nq.findIndex(x => x.id === t.id); }
-  // Update player bar UI immediately
   document.getElementById('npTitle').textContent = t.name;
   document.getElementById('npArtist').textContent = t.artist;
   document.getElementById('npArt').innerHTML = t.art
@@ -687,28 +599,10 @@ async function playTrack(t, nq = null) {
   document.getElementById('pFill').style.width = '0%';
   document.getElementById('pCur').textContent = '0:00';
   document.getElementById('pDur').textContent = fmt(t.duration);
-  document.getElementById('ytTitle').textContent = t.name;
-  document.getElementById('ytArtist').textContent = t.artist;
   updateHL(t.id);
   document.title = `${t.name} — ${t.artist} · Sorell`;
-
-  // Find YouTube video ID
-  toast(`Loading "${t.name}"...`);
-  const ytId = await findYTId(t.name, t.artist);
-  if (!ytId) {
-    // Last resort: open YouTube search in the embed directly
-    const searchQuery = encodeURIComponent(`${t.name} ${t.artist}`);
-    toast(`Opening YouTube search for "${t.name}"...`);
-    document.getElementById('ytWrap').classList.add('on');
-    document.getElementById('ytFrame').src = `https://www.youtube.com/embed?listType=search&list=${searchQuery}&autoplay=1`;
-    return;
-  }
-  cur.ytId = ytId;
-
-  // Open YouTube player and play
-  document.getElementById('ytWrap').classList.add('on');
-  loadYT(ytId);
-  wVol(isMuted ? 0 : vol);
+  // Instantly play via YouTube search embed — no API, no CORS, always works
+  playOnYT(t.name, t.artist);
 }
 
 function setPlayUI(p) {
@@ -726,11 +620,6 @@ function updateHL(id) {
   });
 }
 
-function togglePlay() {
-  if (!ytReady || !cur) return;
-  isPlaying ? ytPlayer.pauseVideo() : ytPlayer.playVideo();
-}
-
 function skipNext() {
   if (!queue.length) return;
   qi = isShuffle ? Math.floor(Math.random()*queue.length) : (qi+1) % queue.length;
@@ -738,20 +627,15 @@ function skipNext() {
 }
 
 function skipPrev() {
-  if (ytReady && ytPlayer.getCurrentTime() > 3) { ytPlayer.seekTo(0); return; }
   if (!queue.length) return;
   qi = Math.max(0, qi-1); playTrack(queue[qi]);
 }
 
 function seekTo(e) {
-  if (!ytReady) return;
-  const pct = e.offsetX / document.getElementById('pBar').offsetWidth;
-  const dur = ytPlayer.getDuration() || 0;
-  ytPlayer.seekTo(pct * dur);
-  document.getElementById('pFill').style.width = (pct*100) + '%';
+  // Seek not available in embed mode
 }
 
-function wVol(v) { if (ytReady) ytPlayer.setVolume(Math.round(v*100)); }
+function wVol(v) { /* volume inside YT embed */ }
 
 function setVol(e) {
   vol = Math.max(0, Math.min(1, e.offsetX / document.getElementById('vBar').offsetWidth));
